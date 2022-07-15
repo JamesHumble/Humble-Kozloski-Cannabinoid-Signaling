@@ -1,0 +1,142 @@
+// =================================================================
+// Licensed Materials - Property of IBM
+//
+// "Restricted Materials of IBM"
+//
+// BCM-YKT-07-18-2017
+//
+// (C) Copyright IBM Corp. 2005-2022  All rights reserved
+//
+// US Government Users Restricted Rights -
+// Use, duplication or disclosure restricted by
+// GSA ADP Schedule Contract with IBM Corp.
+//
+// =================================================================
+
+#ifndef SPINEIAFUNIT_MDL
+#define SPINEIAFUNIT_MDL
+#include "../PointNeuronTools/PointNeuronTools.mdl"
+
+Node SpineIAFUnit Implements SynapticCurrentIAF2Producer, SpineCurrentIAFProducer,
+  CaIAFProducer, eCBIAFProducer
+{
+  NeurotransmitterIAFInput neurotransmitterInput_bouton; // neurotransmitter input from bouton
+  bool neurotransmitterInput_bouton_check;               // whether bouton neurotransmitter is connected already or not
+  NeurotransmitterIAFInput neurotransmitterInput_cleft;  // neurotransmitter input from cleft
+  bool neurotransmitterInput_cleft_check;                // whether cleft neurotransmitter is connected already or not
+  
+  double AMPAweight;                       // weight of AMPA, PSD surface area
+  double AMPArise;                         // rise current of AMPA
+  double AMPAcurrent;                      // fall current of AMPA
+
+  double mGluR5rise;                       // rise current of mGluR5
+  double mGluR5current;                    // fall current of mGluR5
+
+  double NMDARweight;                      // weight of NMDAR, maybe number of NMDARs?
+  double NMDARopen;                        // how much the NMDAR is open
+  double NMDARrise;                        // rise current of NMDAR
+  double NMDARcurrent;                     // fall current of NMDAR
+  
+  double Carise;                           // rise of spine Ca2+
+  double Ca;                               // fall of spine Ca2+
+
+  double eCB;                              // endogenous cannabinoids
+
+  SpikeInput postSpikeInput;               // post-synaptic back propagating spike
+  bool postSpikeInput_check;               // whether a post spike is connected already or not
+  
+  Shared
+    {
+      double AMPAriseTau;                  // rise time constant of AMPA
+      double AMPAfallTau;                  // fall time constant of AMPA
+
+      double mGluR5riseTau;                // rise time constant of mGluR5
+      double mGluR5fallTau;                // fall time constant of mGluR5
+      double mGluR5sensitivity;            // weight of mGluR5
+
+      double NMDARopenTau;                 // decay time constant of NMDAR open
+      double NMDARriseTau;                 // rise time constant of NMDAR
+      double NMDARfallTau;                 // fall time constant of NMDAR
+      double NMDARCasensitivity;           // weight of NMDAR's contribution to Ca
+
+      double CariseTau;                    // rise time constant of spine Ca2+
+      double CafallTau;                    // fall time constant of spine Ca2+
+      bool op_CaVSCCdepend;                // whether the per VSCC activation Ca2+ is
+                                           // dependent on the size of the spine or not
+      double CaVSCC;                       // per VSCC activation, amount to increase Ca2+
+      double CaVSCCpow;                    // if dependent, CaVSCC*(AMPAweight^pow)
+
+      double eCBprodC;                     // eCB production function - steepness
+      double eCBprodD;                     // eCB production function - shifts
+
+      double deltaT;                       // in s
+      unsigned perturbationT;              // when to perturb
+
+      string sharedDirectory;
+      string sharedFilePrep;
+      string sharedFileApp;
+      string sharedFileExt;
+      int [] collectAMPAweightsOn;
+      int [] collectNMDARweightsOn;
+      int collectAMPAweightsNext;
+      int collectNMDARweightsNext;
+
+      InitPhase initializeShared;
+      RuntimePhase outputAMPAweightsShared;
+      RuntimePhase outputNMDARweightsShared;
+
+      // Flags
+      bool op_saveAMPAweights;
+      bool op_saveNMDARweights;
+      bool op_perturbation;
+
+      bool op_neurotransmitterInput_bouton_check;
+      bool op_neurotransmitterInput_cleft_check;
+      bool op_postSpikeInput_check;
+    }
+
+  InAttrPSet
+    {
+      string identifier;
+    }
+
+  InitPhase initialize();
+  RuntimePhase update(AMPAweight, AMPAcurrent,
+                      NMDARweight, NMDARcurrent,
+                      mGluR5current,
+                      Ca, eCB);
+
+  SynapticCurrentIAF2Producer.weight1 << &AMPAweight;               // the AMPA weight
+  SynapticCurrentIAF2Producer.current1 << &AMPAcurrent;             // the AMPA synaptic current output
+  SynapticCurrentIAF2Producer.weight2 << &NMDARweight;              // the NMDAR weight
+  SynapticCurrentIAF2Producer.current2 << &NMDARcurrent;            // the NMDAR synaptic current output
+  SpineCurrentIAFProducer.AMPAcurrent << &AMPAcurrent;              // the AMPA for data collection
+  SpineCurrentIAFProducer.mGluR5current << &mGluR5current;          // the mGluR5 for data collection
+  SpineCurrentIAFProducer.NMDARcurrent << &NMDARcurrent;            // the NMDAR for data collection
+  CaIAFProducer.Ca << &Ca;                                          // Ca2+
+  eCBIAFProducer.eCB << &eCB;                                       // endogenous cannabinoid
+
+  UserFunction check_neurotransmitterInput_bouton;
+  UserFunction check_neurotransmitterInput_cleft;
+  UserFunction check_postSpikeInput;
+
+  Connection Pre Node (PSet.identifier=="neurotransmitterInput_bouton") Expects NeurotransmitterIAFProducer
+  {
+    NeurotransmitterIAFProducer.neurotransmitter >> neurotransmitterInput_bouton.neurotransmitter;
+    check_neurotransmitterInput_bouton();
+  }
+
+  Connection Pre Node (PSet.identifier=="neurotransmitterInput_cleft") Expects Neurotransmitter2IAFProducer
+  {
+    Neurotransmitter2IAFProducer.glutamate >> neurotransmitterInput_cleft.neurotransmitter;
+    check_neurotransmitterInput_cleft();
+  }  
+
+  Connection Pre Node (PSet.identifier=="postSpikeInput") Expects SpikeProducer
+  {
+    SpikeProducer.spike >> postSpikeInput.spike;
+    check_postSpikeInput();
+  }
+}
+
+#endif

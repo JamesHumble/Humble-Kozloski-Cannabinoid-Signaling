@@ -1,0 +1,100 @@
+// =================================================================
+// Licensed Materials - Property of IBM
+//
+// "Restricted Materials of IBM"
+//
+// BCM-YKT-07-18-2017
+//
+// (C) Copyright IBM Corp. 2005-2022  All rights reserved
+//
+// US Government Users Restricted Rights -
+// Use, duplication or disclosure restricted by
+// GSA ADP Schedule Contract with IBM Corp.
+//
+// =================================================================
+
+#ifndef DENDRITEIAFUNIT_MDL
+#define DENDRITEIAFUNIT_MDL
+#include "../PointNeuronTools/PointNeuronTools.mdl"
+
+Node DendriteIAFUnit Implements SynapticCurrentIAFProducer, CaIAFProducer, eCBIAFProducer
+{
+  NeurotransmitterIAFInput neurotransmitterInput; // neurotransmitter input
+  bool neurotransmitterInput_check;               // whether neurotransmitter is connected already or not
+  
+  double GABAweight;                       // weight of GABA, PSD surface area
+  double GABArise;                         // rise current of GABA
+  double GABAcurrent;                      // fall current of GABA
+
+  double Carise;                           // rise of dendrite Ca2+
+  double Ca;                               // fall of dendrite Ca2+
+
+  double eCB;                              // endogenous cannabinoids
+
+  SpikeInput postSpikeInput;               // post-synaptic back propagating spike
+  bool postSpikeInput_check;               // whether a post spike is connected already or not
+  
+  Shared
+    {
+      double GABAriseTau;                  // rise time constant of GABA
+      double GABAfallTau;                  // fall time constant of GABA
+
+      double CariseTau;                    // rise time constant of dendrite Ca2+
+      double CafallTau;                    // fall time constant of dendrite Ca2+
+      double CaVSCC;                       // per VSCC activation, amount to increase Ca2+
+
+      double eCBprodC;                     // eCB production function - steepness
+      double eCBprodD;                     // eCB production function - shifts
+
+      double deltaT;                       // in s
+      unsigned perturbationT;              // when to perturb
+
+      string sharedDirectory;
+      string sharedFilePrep;
+      string sharedFileApp;
+      string sharedFileExt;
+      int [] collectWeightsOn;
+      int collectWeightsNext;
+
+      InitPhase initializeShared;
+      RuntimePhase outputWeightsShared;
+
+      // Flags
+      bool op_saveWeights;
+      bool op_perturbation;
+
+      bool op_neurotransmitterInput_check;
+      bool op_postSpikeInput_check;
+    }
+
+  InAttrPSet
+    {
+      string identifier;
+    }
+
+  InitPhase initialize();
+  RuntimePhase update(GABAweight, GABAcurrent,
+                      Ca, eCB);
+
+  SynapticCurrentIAFProducer.weight << &GABAweight;             // the GABA weight
+  SynapticCurrentIAFProducer.current << &GABAcurrent;           // the GABA synaptic current output
+  CaIAFProducer.Ca << &Ca;                                      // Ca2+
+  eCBIAFProducer.eCB << &eCB;                                   // endogenous cannabinoid
+
+  UserFunction check_neurotransmitterInput;
+  UserFunction check_postSpikeInput;
+
+  Connection Pre Node (PSet.identifier=="neurotransmitterInput") Expects NeurotransmitterIAFProducer
+  {
+    NeurotransmitterIAFProducer.neurotransmitter >> neurotransmitterInput.neurotransmitter;
+    check_neurotransmitterInput();
+  }
+
+  Connection Pre Node (PSet.identifier=="postSpikeInput") Expects SpikeProducer
+  {
+    SpikeProducer.spike >> postSpikeInput.spike;
+    check_postSpikeInput();
+  }
+}
+
+#endif

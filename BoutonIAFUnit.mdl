@@ -1,0 +1,125 @@
+// =================================================================
+// Licensed Materials - Property of IBM
+//
+// "Restricted Materials of IBM"
+//
+// BCM-YKT-07-18-2017
+//
+// (C) Copyright IBM Corp. 2005-2022  All rights reserved
+//
+// US Government Users Restricted Rights -
+// Use, duplication or disclosure restricted by
+// GSA ADP Schedule Contract with IBM Corp.
+//
+// =================================================================
+
+#ifndef BOUTONIAFUNIT_MDL
+#define BOUTONIAFUNIT_MDL
+#include "../PointNeuronTools/PointNeuronTools.mdl"
+
+Node BoutonIAFUnit Implements NeurotransmitterIAFProducer, AvailableNeurotransmitterIAFProducer,
+  CB1RIAFProducer, OutputProducer, MAGLIAFProducer
+{
+  int neurotransmitterType;         // type of neurotransmitter
+
+  SpikeInput spikeInput;            // input of spike
+  bool spikeInput_check;            // whether a spike is connected already or not
+  
+  double neurotransmitter;          // current output of neurotransmitter
+  double availableNeurotransmitter; // amount of neurotransmitter available to be released
+  double maxNeurotransmitter;       // maximum amount of neurotransmitter to recovery to
+  
+  eCBIAFInput eCBInput;             // input of endogenous cannabinoid
+  bool eCBInput_check;              // whether eCB is connected already or not
+  
+  GoodwinInput CB1RInput;           // input of CB1R protein levels
+  bool CB1RInput_check;             // whether CB1R is connected already or not
+  double CB1R;                      // local weighted copy from Goodwin
+  double CB1Runbound;               // CB1R unbound quantity
+  double CB1Rrise;                  // rise current of Cannabinoid receptor
+  double CB1Rcurrent;               // fall current of Cannabinoid receptor  
+  
+  double MAGLrise;                  // rise of MAGL
+  double MAGL;                      // fall of MAGL
+    
+  Shared
+    {
+      double [] neurotransmitterAdaptRate;  // Rate of surpression of neurotransmitter release
+      double [] neurotransmitterRecoverTau; // Rate of recovery from suppression
+
+      double CB1RInputWeight;            // weight of CB1RInput
+      double CB1RriseTau;                // rise time constant of CB1R
+      double CB1RfallTau;                // fall time constant of CB1R
+      
+      double MAGLriseTau;                // rise time constant of MAGL
+      double MAGLfallTau;                // fall time constant of MAGL
+      double MAGLsensitivity;            // sensitivity of MAGL to CB1R
+      
+      double deltaT;                     // in s
+
+      string sharedDirectory;
+      string [] sharedFilePrep;
+      string [] sharedFileApp;
+      string sharedFileExt;
+
+      InitPhase initializeShared;
+
+      // Flags
+      bool op_saveIndexs;
+      bool op_saveCB1Rcurrent;
+      
+      bool op_spikeInput_check;
+      bool op_eCBInput_check;
+      bool op_CB1RInput_check;
+    }
+
+  InAttrPSet
+    {
+      string identifier;
+    }
+
+  InitPhase initialize();
+  RuntimePhase update(neurotransmitter, availableNeurotransmitter,
+                      CB1R, CB1Runbound, CB1Rcurrent,
+                      MAGL);
+
+  NeurotransmitterIAFProducer.neurotransmitter << &neurotransmitter; // neurotransmitter output
+  AvailableNeurotransmitterIAFProducer.availableNeurotransmitter << &availableNeurotransmitter; // available neurotransmitter
+  CB1RIAFProducer.CB1R << &CB1R; // CB1R total quantity
+  CB1RIAFProducer.CB1Runbound << &CB1Runbound; // CB1R unbound quantity
+  CB1RIAFProducer.CB1Rcurrent << &CB1Rcurrent; // CB1R current
+  OutputProducer.output << &CB1Runbound; // CB1R unbound for Goodwin model
+  MAGLIAFProducer.MAGL << &MAGL; // MAGL
+
+  UserFunction setSpikeIndices;
+  UserFunction check_spikeInput;
+  UserFunction check_eCBInput;
+  UserFunction check_CB1RInput;
+
+  Connection Pre Node (PSet.identifier=="inputSpikes") Expects SpikeProducer
+  {
+    SpikeProducer.spike >> spikeInput.spike;
+    setSpikeIndices();
+    check_spikeInput();
+  }
+
+  Connection Pre Node (PSet.identifier=="glutamateeCBInput") Expects eCB2IAFProducer
+  {
+    eCB2IAFProducer.glutamateeCB >> eCBInput.eCB;
+    check_eCBInput();
+  }
+
+  Connection Pre Node (PSet.identifier=="GABAeCBInput") Expects eCB2IAFProducer
+  {
+    eCB2IAFProducer.GABAeCB >> eCBInput.eCB;
+    check_eCBInput();
+  }  
+  
+  Connection Pre Node (PSet.identifier=="CB1RInput") Expects GoodwinProducer
+  {
+    GoodwinProducer.Y >> CB1RInput.Y; // only care about the amount of CB1R, i.e. Y
+    check_CB1RInput();
+  }
+}
+
+#endif

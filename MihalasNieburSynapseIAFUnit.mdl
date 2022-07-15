@@ -1,0 +1,111 @@
+// =================================================================
+// Licensed Materials - Property of IBM
+//
+// "Restricted Materials of IBM"
+//
+// BCM-YKT-07-18-2017
+//
+// (C) Copyright IBM Corp. 2005-2022  All rights reserved
+//
+// US Government Users Restricted Rights -
+// Use, duplication or disclosure restricted by
+// GSA ADP Schedule Contract with IBM Corp.
+//
+// =================================================================
+
+#ifndef MIHALASNIEBURSYNAPSEIAFUNIT_MDL
+#define MIHALASNIEBURSYNAPSEIAFUNIT_MDL
+#include "../PointNeuronTools/PointNeuronTools.mdl"
+
+Node MihalasNieburSynapseIAFUnit Implements SpikeProducer, OutputProducer, ThresholdProducer,
+  VoltageIAFProducer {
+  double [] I; // These variable names are according to Mihalas and Niebur, 2009
+  double [] [] I_p;
+  double [] dI;
+  double V;                 // V
+  double [] V_p;
+  double Theta;             // V
+  double [] Theta_p;
+  bool spike;
+  float V_spike;            // V with spike
+  int spike_cnt;            // counts the duration of the spike
+
+  SynapticCurrentIAFInput [] AMPAcurrentInputs; // AMPA synaptic current inputs
+  SynapticCurrentIAFInput [] NMDARcurrentInputs; // NMDAR synaptic current inputs
+  SynapticCurrentIAFInput [] GABARcurrentInputs; // GABAR synaptic current inputs
+
+  Shared {
+    double b;               // s^-1
+    double G;
+    double C;
+    double GoC;             // s^-1
+    double [] k;            // s^-1
+    double Theta_inf;       // V
+    double [] R;
+    double E_L;             // V
+    double V_r;             // V
+    double Theta_r;         // V
+    float V_max;            // V
+
+    double a;               // s^-1
+    double [] A;            // V/s
+
+    double spike_cntMax;    // how long the spike should be (s)
+
+    double deltaT;          // s
+    int np;                 // number of numerical fixed point iterations
+
+    string sharedDirectory;
+    string sharedFileExt;
+
+    InitPhase initializeShared;
+
+    // Flags
+    bool op_saveIndexs;
+
+    bool op_check_AMPASynapticCurrentIAFInput;
+    unsigned expected_AMPASynapticCurrentIAFInputN;
+    bool op_check_NMDARSynapticCurrentIAFInput;
+    unsigned expected_NMDARSynapticCurrentIAFInputN;
+    bool op_check_GABARSynapticCurrentIAFInput;
+    unsigned expected_GABARSynapticCurrentIAFInputN;
+  }
+
+  InAttrPSet {
+    string identifier;
+    double GABARweight;         // potentially for structural plasticity
+    double AMPAweight;          // potentially for structural plasticity
+    double NMDARweight;         // potentially for structural plasticity
+  }
+
+  InitPhase initialize();
+  RuntimePhase update(V, Theta);
+  RuntimePhase threshold(spike, V_spike);
+
+  OutputProducer.output << &V;
+  ThresholdProducer.threshold << &Theta;
+  SpikeProducer.spike << &spike;
+  VoltageIAFProducer.voltage << &V_spike;
+
+  UserFunction setAMPAIndices;
+  UserFunction setNMDARIndices;
+  UserFunction setGABARIndices;
+
+  // can have predicate functions and multiple boolean nests here
+  Connection Pre Node (PSet.identifier=="AMPAandNMDARcurrentInputs") Expects SynapticCurrentIAF2Producer {
+    SynapticCurrentIAF2Producer.current1 >> AMPAcurrentInputs.current;
+    SynapticCurrentIAF2Producer.current2 >> NMDARcurrentInputs.current;
+    PSet.AMPAweight >> AMPAcurrentInputs.weight;
+    PSet.NMDARweight >> NMDARcurrentInputs.weight;
+    setAMPAIndices();
+    setNMDARIndices();
+  }
+
+  Connection Pre Node (PSet.identifier=="GABARcurrentInputs") Expects SynapticCurrentIAFProducer {
+    SynapticCurrentIAFProducer.current >> GABARcurrentInputs.current;
+    PSet.GABARweight >> GABARcurrentInputs.weight;
+    setGABARIndices();
+  }
+}
+
+#endif

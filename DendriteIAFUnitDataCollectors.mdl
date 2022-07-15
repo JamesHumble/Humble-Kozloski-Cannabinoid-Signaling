@@ -1,0 +1,57 @@
+// =================================================================
+// Licensed Materials - Property of IBM
+//
+// "Restricted Materials of IBM"
+//
+// BCM-YKT-07-18-2017
+//
+// (C) Copyright IBM Corp. 2005-2022  All rights reserved
+//
+// US Government Users Restricted Rights -
+// Use, duplication or disclosure restricted by
+// GSA ADP Schedule Contract with IBM Corp.
+//
+// =================================================================
+
+#ifndef DENDRITEIAFUNITDATACOLLECTORS_MDL
+#define DENDRITEIAFUNITDATACOLLECTORS_MDL
+#include "../PointNeuronTools/PointNeuronTools.mdl"
+
+Variable DendriteIAFUnitDataCollector
+{
+  string directory;
+  string filePrep;
+  string fileApp;
+  string fileExt;
+  int [] rows;
+  int [] cols;
+  int [] slices;
+  int mxslice;
+  double* [] GABAcurrent;
+  double* [] Ca;
+  double* [] eCB;
+  UserFunction getNodeIndices;
+
+  // Paramaters
+  double eCBprodC; // eCB production function - steepness
+  double eCBprodD; // eCB production function - shifts
+
+  // Flags
+  bool op_saveGABA;
+  bool op_saveCa;
+  bool op_saveeCB;
+
+  Connection Pre Node () Expects SynapticCurrentIAFProducer, CaIAFProducer, eCBIAFProducer
+  {
+    SynapticCurrentIAFProducer.current >> GABAcurrent;
+    CaIAFProducer.Ca >> Ca;
+    eCBIAFProducer.eCB >> eCB;
+    getNodeIndices();
+  }
+
+  InitPhase initialize;
+  TriggeredFunction dataCollection;
+  FinalPhase finalize;
+}
+
+#endif

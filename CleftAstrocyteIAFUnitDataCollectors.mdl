@@ -1,0 +1,56 @@
+// =================================================================
+// Licensed Materials - Property of IBM
+//
+// "Restricted Materials of IBM"
+//
+// BCM-YKT-07-18-2017
+//
+// (C) Copyright IBM Corp. 2005-2022  All rights reserved
+//
+// US Government Users Restricted Rights -
+// Use, duplication or disclosure restricted by
+// GSA ADP Schedule Contract with IBM Corp.
+//
+// =================================================================
+
+#ifndef CLEFTASTROCYTEIAFUNITDATACOLLECTORS_MDL
+#define CLEFTASTROCYTEIAFUNITDATACOLLECTORS_MDL
+#include "../PointNeuronTools/PointNeuronTools.mdl"
+
+Variable CleftAstrocyteIAFUnitDataCollector
+{
+  string directory;
+  string filePrep;
+  string fileApp;
+  string fileExt;
+  int [] rows;
+  int [] cols;
+  int [] slices;
+  int mxslice;
+  double* [] glutamate;
+  double* [] GABA;
+  double* [] glutamateeCB;
+  double* [] GABAeCB;
+  UserFunction getNodeIndices;
+   
+  // Flags
+  bool op_saveGlutamate;
+  bool op_saveGABA;
+  bool op_saveGlutamateeCB;
+  bool op_saveGABAeCB;
+  
+  Connection Pre Node () Expects Neurotransmitter2IAFProducer, eCB2IAFProducer
+  {
+    Neurotransmitter2IAFProducer.glutamate >> glutamate;
+    Neurotransmitter2IAFProducer.GABA >> GABA;
+    eCB2IAFProducer.glutamateeCB >> glutamateeCB;
+    eCB2IAFProducer.GABAeCB >> GABAeCB;
+    getNodeIndices();
+  }
+  
+  InitPhase initialize;
+  TriggeredFunction dataCollection;
+  FinalPhase finalize;
+}
+
+#endif

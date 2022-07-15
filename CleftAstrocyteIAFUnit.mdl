@@ -1,0 +1,98 @@
+// =================================================================
+// Licensed Materials - Property of IBM
+//
+// "Restricted Materials of IBM"
+//
+// BCM-YKT-07-18-2017
+//
+// (C) Copyright IBM Corp. 2005-2022  All rights reserved
+//
+// US Government Users Restricted Rights -
+// Use, duplication or disclosure restricted by
+// GSA ADP Schedule Contract with IBM Corp.
+//
+// =================================================================
+
+#ifndef CLEFTASTROCYTEIAFUNIT_MDL
+#define CLEFTASTROCYTEIAFUNIT_MDL
+#include "../PointNeuronTools/PointNeuronTools.mdl"
+
+Node CleftAstrocyteIAFUnit Implements Neurotransmitter2IAFProducer, eCB2IAFProducer
+{
+  Neurotransmitter2IAFInput neurotransmitterInput; // glutamate released
+  bool glutamateInput_check;                       // whether glutamate is connected already or not
+  bool GABAInput_check;                            // whether GABA is connected already or not
+  
+  double glutamate;                                // current glutamate concentration
+  double GABA;                                     // current GABA concentration
+
+  eCBIAFInput glutamateeCBInput;                   // spine's eCB
+  bool glutamateeCBInput_check;                    // whether spine's eCB is connected already not not
+  eCBIAFInput GABAeCBInput;                        // dendrite's eCB
+  bool GABAeCBInput_check;                         // whether dendrite's eCB is connected already not not
+  
+  double glutamateeCB;                             // eCB for the glutamatergic bouton  
+  double GABAeCB;                                  // eCB for the GABAergic bouton
+  
+  Shared
+    {
+      double glutamateDecayTau;                    // glutamate decay tau
+      double GABADecayTau;                         // GABA decay tau
+
+      double eCBCrossTalk;                         // The percent of eCB cross talk
+      
+      double deltaT;                               // in s
+
+      InitPhase initializeShared;
+      
+      // Flags
+      bool op_glutamateInput_check;
+      bool op_GABAInput_check;
+      bool op_glutamateeCBInput_check;
+      bool op_GABAeCBInput_check;
+    }
+
+  InAttrPSet
+    {
+      string identifier;
+    }
+
+  InitPhase initialize();
+  RuntimePhase update(glutamate, GABA, glutamateeCB, GABAeCB);
+
+  Neurotransmitter2IAFProducer.glutamate << &glutamate; // glutamate output
+  Neurotransmitter2IAFProducer.GABA << &GABA;           // GABA output
+  eCB2IAFProducer.glutamateeCB << &glutamateeCB;        // glutamate endogenous cannabinoids
+  eCB2IAFProducer.GABAeCB << &GABAeCB;                  // GABA endogenous cannabinoids
+
+  UserFunction check_glutamateInput;
+  UserFunction check_GABAInput;
+  UserFunction check_glutamateeCBInput;
+  UserFunction check_GABAeCBInput;
+  
+  Connection Pre Node (PSet.identifier=="glutamateInput") Expects NeurotransmitterIAFProducer    
+  {
+    NeurotransmitterIAFProducer.neurotransmitter >> neurotransmitterInput.glutamate;
+    check_glutamateInput();
+  }
+
+  Connection Pre Node (PSet.identifier=="GABAInput") Expects NeurotransmitterIAFProducer    
+  {
+    NeurotransmitterIAFProducer.neurotransmitter >> neurotransmitterInput.GABA;
+    check_GABAInput();
+  }  
+
+  Connection Pre Node (PSet.identifier=="glutamateeCBInput") Expects eCBIAFProducer
+  {
+    eCBIAFProducer.eCB >> glutamateeCBInput.eCB;
+    check_glutamateeCBInput();
+  }
+
+  Connection Pre Node (PSet.identifier=="GABAeCBInput") Expects eCBIAFProducer
+  {
+    eCBIAFProducer.eCB >> GABAeCBInput.eCB;
+    check_GABAeCBInput();
+  }    
+}
+
+#endif

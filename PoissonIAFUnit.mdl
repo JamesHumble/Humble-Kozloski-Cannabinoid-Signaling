@@ -1,0 +1,39 @@
+// =================================================================
+// Licensed Materials - Property of IBM
+//
+// "Restricted Materials of IBM"
+//
+// BCM-YKT-07-18-2017
+//
+// (C) Copyright IBM Corp. 2005-2022  All rights reserved
+//
+// US Government Users Restricted Rights -
+// Use, duplication or disclosure restricted by
+// GSA ADP Schedule Contract with IBM Corp.
+//
+// =================================================================
+
+#ifndef POISSONIAFUNIT_MDL
+#define POISSONIAFUNIT_MDL
+#include "../PointNeuronTools/PointNeuronTools.mdl"
+
+Node PoissonIAFUnit Implements SpikeProducer
+{
+  double Hz;         // rate to fire at
+  bool spike;        // current spike status
+
+  Shared
+    {
+      double deltaT; // in s
+      unsigned perturbationT; // when to perturb
+
+      // Flags
+      bool op_perturbation;
+    }
+
+  RuntimePhase update(spike);
+
+  SpikeProducer.spike << &spike; // the spike output
+}
+
+#endif
